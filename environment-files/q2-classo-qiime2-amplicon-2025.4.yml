@@ -3,16 +3,16 @@ channels:
 - conda-forge
 - bioconda
 dependencies:
-- numpy>=1.17.3
-- numba>=0.46.0
-- scipy>=0.11.0
-- scikit-learn>=0.24.1
-- qiime2
-- zarr
-- pandas
-- jupyterlab
-- jupyter
-- plotly
-- pip:
+  - numpy>=1.17.3
+  - numba>=0.46.0
+  - scipy>=0.11.0
+  - scikit-learn>=0.24.1
+  - qiime2
+  - zarr
+  - pandas
+  - jupyterlab
+  - jupyter
+  - plotly
+  - pip
   - pip:
-     - git+https://github.com/Leo-Simpson/c-lasso.git@master
+    - git+https://github.com/Leo-Simpson/c-lasso.git@master
