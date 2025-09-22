@@ -3,11 +3,11 @@ channels:
 - conda-forge
 - bioconda
 dependencies:
+  - qiime2-amplicon
   - numpy>=1.17.3
   - numba>=0.46.0
   - scipy>=0.11.0
   - scikit-learn>=0.24.1
-  - qiime2
   - zarr
   - pandas
   - jupyterlab
@@ -15,4 +15,5 @@ dependencies:
   - plotly
   - pip
   - pip:
+    - git+https://github.com/bio-datascience/q2-classo-latest@main
     - git+https://github.com/Leo-Simpson/c-lasso.git@master
