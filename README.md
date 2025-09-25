@@ -4,11 +4,11 @@
 
 *A [QIIME 2](https://qiime2.org) plugin for solving **constrained sparse regression and classification** problems with microbiome data including:*
 
-- Lasso regression with taxonomic constraints
+- Sparse log-contrast regression 
 - Cross-validation for hyperparameter selection
 - Stability selection for feature selection
 - Classification and regression tasks
-- Tree-aggregated predictive modeling
+- Tree-aggregated predictive modeling (trac)
 - Interactive visualizations with model diagnostics
 
 📂 [Tutorial & Examples](https://github.com/Vlasovets/q2-hdstats-docs)
