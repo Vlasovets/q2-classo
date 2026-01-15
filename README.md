@@ -50,7 +50,6 @@ This tutorial includes:
 - CLR transformation and taxonomic aggregation
 - Constrained lasso regression with cross-validation
 - Stability selection for robust feature selection
-- HIV sCD14 prediction case study
 - Interactive visualization of model results
 
 ---
