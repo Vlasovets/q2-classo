@@ -46,7 +46,6 @@ A complete tutorial on using `q2-classo` for microbiome data analysis — includ
 
 This tutorial includes:
 
-- Random data generation and basic workflow
 - CLR transformation and taxonomic aggregation
 - Constrained lasso regression with cross-validation
 - Stability selection for robust feature selection
