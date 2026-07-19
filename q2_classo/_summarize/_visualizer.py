@@ -461,9 +461,7 @@ def name_formulation(dictio, output_dir):
                     os.path.join(output_dir, "formula.png"),
                 )
                 return (
-                    "R4 (concomitant and huber with e = "
-                    + str(dictio["e"])
-                    + " and rho = "
+                    "R4 (concomitant and huber with rho = "
                     + str(dictio["rho"])
                     + " )"
                 )
@@ -472,7 +470,7 @@ def name_formulation(dictio, output_dir):
                     os.path.join(dir_form, "R3.png"),
                     os.path.join(output_dir, "formula.png"),
                 )
-                return "R3 (concomitant with e = " + str(dictio["e"]) + " )"
+                return "R3 (concomitant)"
         else:
             if dictio["huber"]:
                 shutil.copy(
