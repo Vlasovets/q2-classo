@@ -288,11 +288,11 @@ plugin.methods.register_function(
             " contain all information about the problem solved"
         )
     },
-    name="regress",
+    name="classify",
     description=(
         "The function computes the "
-        "constrainted_sparse_regression vector "
-        "with respect to the formulation of regression"
+        "constrainted_sparse_classification vector "
+        "with respect to the formulation of classification"
         " that is asked and with respect to the model"
         " selection parameters given"
     )
