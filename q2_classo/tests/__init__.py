@@ -6,4 +6,4 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 
-from ._visualizer import summarize
+"""Unit tests for the q2-classo plugin."""

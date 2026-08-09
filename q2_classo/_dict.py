@@ -38,6 +38,8 @@ regress_parameters = {
     "cv_seed": Int,  # do something here ! for now it can be a bool !
     "cv_one_se": Bool,
     "cv_subsets": Int,
+    "cv_nlam": Int,
+    # Deprecated spelling, kept so existing commands keep working.
     "cv__nlam": Int,
     "cv_lamin": Float,
     "cv_logscale": Bool,
@@ -129,7 +131,12 @@ regress_parameter_descriptions = {
     "cv_subsets": (
         "number of subset in the cross validation method." " Default value : 5"
     ),
-    "cv__nlam": "number of lambda in cross-validation path",
+    "cv_nlam": "number of lambda in cross-validation path",
+    "cv__nlam": (
+        "DEPRECATED spelling of cv_nlam (note the double underscore, which "
+        "surfaces on the CLI as --p-cv--nlam). Use --p-cv-nlam instead; this "
+        "alias still works but will be removed in a future release."
+    ),
     "cv_lamin": "lambda minimum in cross-validation path",
     "cv_logscale": "log scale in cross-validation path",
     # StabSel parameters :
@@ -242,6 +249,8 @@ classify_parameters = {
     "cv_seed": Int,
     "cv_one_se": Bool,
     "cv_subsets": Int,
+    "cv_nlam": Int,
+    # Deprecated spelling, kept so existing commands keep working.
     "cv__nlam": Int,
     "cv_lamin": Float,
     "cv_logscale": Bool,
@@ -329,7 +338,12 @@ classify_parameter_descriptions = {
     "cv_subsets": (
         "number of subset in the cross validation method." " Default value : 5"
     ),
-    "cv__nlam": "number of lambda in cross-validation path",
+    "cv_nlam": "number of lambda in cross-validation path",
+    "cv__nlam": (
+        "DEPRECATED spelling of cv_nlam (note the double underscore, which "
+        "surfaces on the CLI as --p-cv--nlam). Use --p-cv-nlam instead; this "
+        "alias still works but will be removed in a future release."
+    ),
     "cv_lamin": "lambda minimum in cross-validation path",
     "cv_logscale": "log scale in cross-validation path",
     # StabSel parameters :

@@ -1,5 +1,11 @@
+import warnings
+
 import numpy as np
 import zarr
+
+# Restores np.infty for c-lasso 1.0.11 under numpy 2; without it every solve
+# raises AttributeError. Must be imported before any classo solver runs.
+from . import _numpy_compat  # noqa: F401
 from classo import *
 
 from q2_types.feature_table import FeatureTable, Composition
@@ -11,6 +17,46 @@ from ._tree import tree_to_matrix
 
 
 # TODO : change C type to pandas dataframe
+
+
+# Registered default for both spellings of the CV lambda count. It doubles as
+# the "not given" sentinel in _resolve_cv_nlam, because QIIME 2 always passes a
+# value, so keep this literal in one place.
+_CV_NLAM_DEFAULT = 100
+
+
+def _resolve_cv_nlam(cv_nlam: int, cv__nlam: int = None) -> int:
+    """Resolve the cross-validation lambda count from its old and new spellings.
+
+    The parameter was originally named ``cv__nlam`` -- with a double underscore,
+    which QIIME 2 renders on the command line as the distinctly odd
+    ``--p-cv--nlam``. It is now ``cv_nlam``. The old spelling is still accepted
+    so existing scripts and published tutorial commands keep working, but it
+    warns and will be removed in a future release.
+
+    Passing both with conflicting values is an error rather than a silent
+    precedence rule: there is no sensible way to guess which one the caller
+    meant. The one exception is ``cv_nlam`` still sitting at its registered
+    default (``_CV_NLAM_DEFAULT``), which is indistinguishable from "not
+    given" -- QIIME 2 fills the default in either way -- so that case is read
+    as a legacy-only call and ``cv__nlam`` wins.
+    """
+    if cv__nlam is None:
+        return cv_nlam
+
+    if cv_nlam != _CV_NLAM_DEFAULT and cv_nlam != cv__nlam:
+        raise ValueError(
+            "Both 'cv_nlam' and the deprecated 'cv__nlam' were given with "
+            f"different values ({cv_nlam} and {cv__nlam}). Pass only 'cv_nlam'."
+        )
+
+    warnings.warn(
+        "'cv__nlam' (double underscore, --p-cv--nlam) is deprecated; use "
+        "'cv_nlam' (--p-cv-nlam) instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return cv__nlam
 
 
 class prediction_data:
@@ -72,8 +118,13 @@ def transform_features(
     features: pd.DataFrame, transformation: str = "clr", coef: float = 0.5
 ) -> pd.DataFrame:
     if transformation == "clr":
-        X = features.values
-        null_set = X <= 0.0# just ignore zero replacement for the sake of experiment
+        # to_numpy(copy=True) rather than .values: under pandas Copy-on-Write
+        # .values can hand back a read-only view of the caller's buffer, and the
+        # in-place assignment below would then raise
+        # "ValueError: assignment destination is read-only" (or, worse, mutate
+        # the caller's DataFrame).
+        X = features.to_numpy(copy=True, dtype=float)
+        null_set = X <= 0.0  # just ignore zero replacement for the sake of experiment
         X[null_set] = coef
         X = np.log(X)
         X = (X.T - np.mean(X, axis=1)).T
@@ -199,7 +250,9 @@ def regress(
         cv_seed: int = 1,
         cv_one_se: bool = True,
         cv_subsets: int = 5,
-        cv__nlam: int = 100,
+        cv_nlam: int = _CV_NLAM_DEFAULT,
+        # Deprecated alias for cv_nlam; see _resolve_cv_nlam().
+        cv__nlam: int = None,
         cv_lamin: float = 1e-3,
         cv_logscale: bool = True,
         # StabSel parameters :
@@ -271,9 +324,12 @@ def regress(
         param.numerical_method = cv_numerical_method
         param.seed = cv_seed
         param.oneSE = cv_one_se
-        param.Nsubsets = cv_subsets
+        # c-lasso's CVparameters attribute is `Nsubset` (singular). Assigning
+        # `Nsubsets` silently created a new attribute that nothing reads, so
+        # --p-cv-subsets was inert and CV always ran with the library default.
+        param.Nsubset = cv_subsets
         param.lamin = cv_lamin
-        param.Nlam = cv__nlam
+        param.Nlam = _resolve_cv_nlam(cv_nlam, cv__nlam)
         param.logscale = cv_logscale
 
     problem.model_selection.StabSel = stabsel
@@ -281,7 +337,12 @@ def regress(
         param = problem.model_selection.StabSelparameters
         param.numerical_method = stabsel_numerical_method
         param.seed = stabsel_seed
-        param.true_lam = stabsel_true_lam
+        # c-lasso's attribute is `rescaled_lam`, and it is the INVERSE of this
+        # parameter: its docstring reads "False if lam = lambda, [True] if
+        # lam = lambda/lambdamax". Assigning `true_lam` created an attribute
+        # nothing reads, so --p-stabsel-true-lam was inert.
+        # Only consulted when stabsel_method == 'lam'.
+        param.rescaled_lam = not stabsel_true_lam
         param.method = stabsel_method
         param.B = stabsel_b
         param.q = stabsel_q
@@ -298,7 +359,8 @@ def regress(
     if lamfixed:
         param = problem.model_selection.LAMfixedparameters
         param.numerical_method = lamfixed_numerical_method
-        param.true_lam = lamfixed_true_lam
+        # Same inversion as above; --p-lamfixed-true-lam was likewise inert.
+        param.rescaled_lam = not lamfixed_true_lam
         if lamfixed_lam > 0.0:
             param.lam = lamfixed_lam
         else:
@@ -333,7 +395,9 @@ def classify(
         cv_seed: int = 1,
         cv_one_se: bool = True,
         cv_subsets: int = 5,
-        cv__nlam: int = 100,
+        cv_nlam: int = _CV_NLAM_DEFAULT,
+        # Deprecated alias for cv_nlam; see _resolve_cv_nlam().
+        cv__nlam: int = None,
         cv_lamin: float = 1e-3,
         cv_logscale: bool = True,
         # StabSel parameters :
@@ -362,9 +426,10 @@ def classify(
 ) -> classo_problem:
     complete_y = y.to_series()
     complete_y = complete_y[~complete_y.isna()]
-    first_cell = complete_y[0]
-
-    # print(sum(complete_y==complete_y[0]), len(complete_y))
+    # .iloc[0], not [0]: the index holds sample IDs (strings), so positional
+    # __getitem__ with an integer is deprecated on pandas 2.x and raises
+    # KeyError: 0 on pandas 3. This is on the `classify` critical path.
+    first_cell = complete_y.iloc[0]
 
     features, pdY = features.align(y.to_series(), join="inner", axis=0)
     missing = pdY.isna()
@@ -408,9 +473,12 @@ def classify(
         param.numerical_method = cv_numerical_method
         param.seed = cv_seed
         param.oneSE = cv_one_se
-        param.Nsubsets = cv_subsets
+        # c-lasso's CVparameters attribute is `Nsubset` (singular). Assigning
+        # `Nsubsets` silently created a new attribute that nothing reads, so
+        # --p-cv-subsets was inert and CV always ran with the library default.
+        param.Nsubset = cv_subsets
         param.lamin = cv_lamin
-        param.Nlam = cv__nlam
+        param.Nlam = _resolve_cv_nlam(cv_nlam, cv__nlam)
         param.logscale = cv_logscale
 
     problem.model_selection.StabSel = stabsel
@@ -418,7 +486,12 @@ def classify(
         param = problem.model_selection.StabSelparameters
         param.numerical_method = stabsel_numerical_method
         param.seed = stabsel_seed
-        param.true_lam = stabsel_true_lam
+        # c-lasso's attribute is `rescaled_lam`, and it is the INVERSE of this
+        # parameter: its docstring reads "False if lam = lambda, [True] if
+        # lam = lambda/lambdamax". Assigning `true_lam` created an attribute
+        # nothing reads, so --p-stabsel-true-lam was inert.
+        # Only consulted when stabsel_method == 'lam'.
+        param.rescaled_lam = not stabsel_true_lam
         param.method = stabsel_method
         param.B = stabsel_b
         param.q = stabsel_q
@@ -435,7 +508,8 @@ def classify(
     if lamfixed:
         param = problem.model_selection.LAMfixedparameters
         param.numerical_method = lamfixed_numerical_method
-        param.true_lam = lamfixed_true_lam
+        # Same inversion as above; --p-lamfixed-true-lam was likewise inert.
+        param.rescaled_lam = not lamfixed_true_lam
         if lamfixed_lam > 0.0:
             param.lam = lamfixed_lam
         else:
@@ -460,7 +534,10 @@ def verfify_binary(y):
         raise ValueError(
             "Metadata column y is supposed to be binary, "
             + "but takes more than 2 different values : "
-            + " ; ".join(lis)
+            # map(str, ...) because the values are not guaranteed to be strings;
+            # without it this raises TypeError and masks the error it exists to
+            # report.
+            + " ; ".join(map(str, lis))
         )
 
 

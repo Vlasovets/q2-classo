@@ -1,0 +1,96 @@
+name: CI/CD
+
+# This repository previously had no CI at all -- no .github/ directory on any
+# branch. Mirrors the q2-gglasso workflow.
+on:
+  push:
+    branches: ["main", "master", "dev"]
+  pull_request:
+    branches: ["main", "master", "dev"]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: QIIME 2 2026.7 (linux-64)
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        # versioningit derives the version from git describe; a shallow clone
+        # has no tags and the build fails.
+        fetch-depth: 0
+
+    - name: Free up disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost
+        df -h /
+
+    - name: Set up Conda
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        activate-environment: q2-classo-qiime2-2026.7
+        environment-file: environment-files/q2-classo-qiime2-2026.7.yml
+        miniforge-version: latest
+        conda-remove-defaults: true
+        auto-activate-base: false
+
+    - name: Install plugin
+      shell: bash -l {0}
+      run: pip install --no-deps -e .
+
+    - name: Verify the conda solve did not drift the distribution pins
+      shell: bash -l {0}
+      run: |
+        python - <<'PY'
+        import sys, importlib.metadata as md
+        for pkg, major in {"numpy": "2", "pandas": "2", "scipy": "1"}.items():
+            got = md.version(pkg)
+            print(f"{pkg}={got}")
+            if not got.startswith(major):
+                sys.exit(f"unexpected major version for {pkg}: {got}")
+        PY
+
+    # Registration failures do not surface in unit tests but break every user
+    # command, so check them explicitly and cheaply.
+    - name: Smoke test - plugin registers
+      shell: bash -l {0}
+      run: |
+        qiime dev refresh-cache
+        qiime classo --help
+        qiime classo regress --help
+        qiime classo classify --help
+
+    - name: Run tests
+      shell: bash -l {0}
+      working-directory: ${{ github.workspace }}
+      run: pytest q2_classo/tests -v --durations=20
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout source
+      uses: actions/checkout@v4
+
+    - name: set up python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -q https://github.com/qiime2/q2lint/archive/master.zip
+        pip install -q ruff
+
+    # Pyflakes-only (--select=F), minus the four rules that are already red on
+    # this tree: 67 pre-existing findings (57 F401 unused imports, 1 F403 and
+    # 5 F405 from `from classo import *`, 4 F841 unused locals). What is left
+    # passes today, so the gate is green and meaningful from day one. Tighten
+    # by dropping one ignore at a time -- F841 is the smallest -- and only then
+    # start on the E501/style debt.
+    - name: run ruff
+      run: ruff check --select=F --ignore=F401,F403,F405,F841 .
+
+    - name: run q2lint
+      run: q2lint
