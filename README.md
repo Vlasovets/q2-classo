@@ -1,6 +1,7 @@
 # q2-classo
 [![BSD License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Python version](https://img.shields.io/badge/python-%3E3.6-blue)](https://www.python.org/)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Vlasovets/q2-classo)
 
 *A [QIIME 2](https://qiime2.org) plugin for solving **constrained sparse regression and classification** problems with microbiome data including:*
 
