@@ -230,6 +230,7 @@ classify_parameters = {
     "huber": Bool,
     "rho": Float,
     "intercept": Bool,
+    "refit": Bool,
     # PATH parameters :
     "path": Bool,
     "path_numerical_method": Str,
@@ -276,6 +277,11 @@ classify_parameter_descriptions = {
     ),
     "rho": "Value of rho for robust problem. Default value = 1.345",
     "intercept": "if True, the formulation will be with an intercept",
+    "refit": (
+        "If True, predictions use post-selection refitted coefficients. "
+        "If False, predictions use the selected penalized coefficients. "
+        "Default value: True"
+    ),
     # PATH parameters :
     "path": "True if path should be computed. Default Value = False",
     "path_numerical_method": (

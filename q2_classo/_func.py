@@ -359,6 +359,7 @@ def classify(
         huber: bool = False,
         rho: float = 0.0,
         intercept: bool = True,
+        refit: bool = True,
 ) -> classo_problem:
     complete_y = y.to_series()
     complete_y = complete_y[~complete_y.isna()]
@@ -443,6 +444,10 @@ def classify(
 
     problem.solve()
 
+    # c-lasso retains post-selection refits internally. Persist the requested
+    # prediction mode so q2-classo can use the penalized CV solution on demand.
+    problem.refit = refit
+
     cy = complete_y.values
     problem.data.complete_y = 2 * (cy == cy[0]) - 1
     problem.data.complete_labels = list(complete_y.index)
@@ -504,14 +509,18 @@ def predict(
             Y_path[i, :] = X.dot(beta_path[i])
         predictions.YhatPATH = Y_path
 
+    # Artifacts created before this option did not store ``refit``; preserve
+    # their established post-selection-refit behavior.
+    use_refit = problem.attrs.get("refit", True)
+
     if predictions.CV:
-        beta_refit = np.array(problem["solution/CV/refit"])
-        Yhat = X.dot(beta_refit)
+        beta_name = "refit" if use_refit else "beta"
+        Yhat = X.dot(np.array(problem[f"solution/CV/{beta_name}"]))
         predictions.YhatCV = Yhat
 
     if predictions.StabSel:
-        beta_refit = np.array(problem["solution/StabSel/refit"])
-        Yhat = X.dot(beta_refit)
+        beta_name = "refit" if use_refit else "beta"
+        Yhat = X.dot(np.array(problem[f"solution/StabSel/{beta_name}"]))
         predictions.YhatStabSel = Yhat
 
     if predictions.LAMfixed:
